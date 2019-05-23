@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AnimatorBack</string>
+    <string name="title_activity_animator">AnimatorActivity</string>
+</resources>
