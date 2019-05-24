@@ -7,6 +7,8 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import android.widget.RelativeLayout
+import androidx.appcompat.widget.AppCompatImageView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.marginTop
 import kotlinx.android.synthetic.main.part_animator_container.view.*
 
@@ -15,7 +17,7 @@ import kotlinx.android.synthetic.main.part_animator_container.view.*
  *@data 2019/5/23 14:27
  *@description
  */
-class MyAnimatorContainer : RelativeLayout {
+class MyAnimatorContainer : ConstraintLayout {
     constructor(context: Context) : super(context)
 
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
@@ -27,13 +29,14 @@ class MyAnimatorContainer : RelativeLayout {
     }
 
     private var mHeight: Int = 0
-    private var starMarginTop: Int = 0
     var aivSkyLineHeight: Int = 0
     var aivMountainHeight: Int = 0
     var aivLandHeight: Int = 0
+    private var starMarginTopMap: HashMap<AppCompatImageView, Int> = hashMapOf()
     private fun initView() {
 
     }
+
     private var mAivPlane: MyPlane? = null
     fun setPlane(aivPlane: MyPlane?) {
         mAivPlane = aivPlane
@@ -45,6 +48,7 @@ class MyAnimatorContainer : RelativeLayout {
     }
 
     var mPercent = 0f
+    private var letgoPercent = 0f //放开时的放大比
     fun dragY(dY: Float) {
         mPercent = dY / mHeight
         if (mPercent < 0) {
@@ -70,11 +74,28 @@ class MyAnimatorContainer : RelativeLayout {
          */
         mAivPlane?.setPercent(percent)
         /**
+         * 树的百分比效果
+         */
+        aivTree?.setPercent(percent)
+        /**
          * 星星高度
          */
-        val starParams = aivStar.layoutParams
-        (aivStar.layoutParams as? MarginLayoutParams)?.topMargin = (starMarginTop + starMarginTop * 2 * percent).toInt()
-        aivStar.layoutParams = starParams
+        resetMarginTopByPercent(aivStar, percent)
+        resetMarginTopByPercent(aivStar2, percent)
+        resetMarginTopByPercent(aivStar3, percent)
+        resetMarginTopByPercent(aivStar4, percent)
+        resetMarginTopByPercent(aivStar5, percent)
+    }
+
+    /**
+     * 根据百分比设置高度
+     */
+    private fun resetMarginTopByPercent(aiv: AppCompatImageView, percent: Float) {
+        val starParams = aiv.layoutParams
+        val marginTop = starMarginTopMap[aiv] ?: 0
+        val top = marginTop + marginTop * 2 * percent
+        (aiv.layoutParams as? MarginLayoutParams)?.topMargin = top.toInt()
+        aiv.layoutParams = starParams
     }
 
     /**
@@ -88,6 +109,10 @@ class MyAnimatorContainer : RelativeLayout {
 
     var valueAnimator: ValueAnimator? = null
     fun release() {
+        if (mPercent == 0f) {
+            return//被还到原位时 不执行动画
+        }
+        letgoPercent = mPercent
         valueAnimator ?: run {
             valueAnimator = ValueAnimator.ofFloat(mPercent, 0f)
             valueAnimator?.interpolator = OvershootInterpolator()
@@ -95,10 +120,9 @@ class MyAnimatorContainer : RelativeLayout {
             valueAnimator?.addUpdateListener {
                 val value = it.animatedValue as Float
                 resetHeightByPercent(value)
-                if (value == 0.0f) {
-                    mAivPlane?.fly()
+                if (value == 0.00f) {
+                    mAivPlane?.fly(letgoPercent)
                 }
-//                Log.w("AnimatorContainer", "value: $value")
             }
         }
         valueAnimator?.cancel()
@@ -109,10 +133,16 @@ class MyAnimatorContainer : RelativeLayout {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        if (mHeight == 0)//初始化
+        if (mHeight == 0) {//初始化
             mHeight = MeasureSpec.getSize(heightMeasureSpec)
-        if (starMarginTop == 0) {
-            starMarginTop = aivStar.marginTop
+            mAivPlane?.init(MeasureSpec.getSize(widthMeasureSpec), mHeight)
+        }
+        if (starMarginTopMap.isEmpty()) {
+            starMarginTopMap[aivStar] = aivStar.marginTop
+            starMarginTopMap[aivStar2] = aivStar2.marginTop
+            starMarginTopMap[aivStar3] = aivStar3.marginTop
+            starMarginTopMap[aivStar4] = aivStar4.marginTop
+            starMarginTopMap[aivStar5] = aivStar5.marginTop
         }
         if (aivSkyLineHeight == 0) {
             aivSkyLineHeight = aivSkyLine.measuredHeight
@@ -125,10 +155,18 @@ class MyAnimatorContainer : RelativeLayout {
         }
     }
 
+    private fun flickerStar() {
+        flickerStar(aivStar)
+        flickerStar(aivStar2)
+        flickerStar(aivStar3)
+        flickerStar(aivStar4)
+        flickerStar(aivStar5)
+    }
+
     /**
      * 星星闪烁
      */
-    private fun flickerStar() {
+    private fun flickerStar(aivStar: AppCompatImageView) {
         // 第一种写法
         val animator1 = ObjectAnimator.ofFloat(aivStar, "scaleX", 1f, 1.5f, 0.8f, 1f)
         animator1.setDuration(2500).repeatCount = ValueAnimator.INFINITE
